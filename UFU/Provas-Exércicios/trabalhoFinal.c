@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <locale.h>
 
 #define dados 50
@@ -24,7 +25,7 @@ typedef struct
   Data dataNascimento;
   struct cliente *anterior;
   struct cliente *proximo;
-}cliente;
+} cliente;
 
 typedef struct
 {
@@ -100,14 +101,21 @@ void removeNaLista(no **inicio, no *itemDaLista)
   }
 }
 
-// ANCHOR - Funções para adicionar, alterar, consultar e deletar clientes
+// ANCHOR - Funções para adicionar, alterar e deletar clientes
 void insereCliente(no **inicio, cliente *novoCliente)
 {
-  no *novoNo = (no *)malloc(sizeof(no)); // TODO - Tratar se a memoria está cheia
-  novoNo->C = novoCliente;
-  novoNo->P = NULL;
-  novoNo->V = NULL;
-  insereNaLista(inicio, novoNo);
+  no *novoNo = (no *)malloc(sizeof(no));
+  if (novoNo == NULL)
+  { // REVIEW - Porque eu não posso colocar o novoNo como ponteiro dentro do if?
+    printf("Memoria Cheia\n");
+  }
+  else
+  {
+    novoNo->C = novoCliente;
+    novoNo->P = NULL;
+    novoNo->V = NULL;
+    insereNaLista(inicio, novoNo);
+  }
 }
 
 void alteraCliente(cliente *C, char *nome, int telefone, endereco end, Data dataNascimento)
@@ -119,12 +127,12 @@ void alteraCliente(cliente *C, char *nome, int telefone, endereco end, Data data
   // TODO -  Tratar se terá espaço para a alteração dos dados
 }
 
-void removeCliente(no **inicio, cliente *C)
+void removeCliente(no **inicio, no *C)
 {
   no *aux = *inicio;
   while (aux != NULL)
   {
-    if (aux->C == C)
+    if (aux->C == (cliente *)C)
     {
       removeCliente(inicio, aux);
       break;
@@ -133,14 +141,21 @@ void removeCliente(no **inicio, cliente *C)
   }
 }
 
-// ANCHOR - Funções para adicionar, alterar, consultar e deletar produtos
+// ANCHOR - Funções para adicionar, alterar e deletar produtos
 void insereProduto(no **inicio, produto *novoProduto)
 {
-  no *novoNO = (no *)malloc(sizeof(no)); // TODO - Tratar se a memoria está cheia
-  novoNO->C = NULL;
-  novoNO->P = novoProduto;
-  novoNO->V = NULL;
-  insereNaLista(inicio, novoNO);
+  no *novoNO = (no *)malloc(sizeof(no));
+  if (novoNO == NULL)
+  {
+    printf("Memoria Cheia\n");
+  }
+  else
+  {
+    novoNO->C = NULL;
+    novoNO->P = novoProduto;
+    novoNO->V = NULL;
+    insereNaLista(inicio, novoNO);
+  }
 }
 
 void alteraProduto(produto *P, int codigo, int quantidadeEstoque, char descricao[], float precoUnitario)
@@ -166,17 +181,41 @@ void removeProduto(no **inicio, produto *P)
   }
 }
 
-// ANCHOR - Funções para adicionar, alterar, consultar e deletar vendas
+void produtoEmVenda(no *inicio, int codigoProduto, int *result)
+{
+  no *aux = inicio;
+  *result = 0;
+  while (aux != NULL)
+  {
+    if (aux->V != NULL && aux->V->codigoProduto == codigoProduto)
+    {
+      *result = 1;
+      break;
+    }
+    aux = aux->proximo;
+  }
+}
+
+// ANCHOR - Funções para adicionar, alterar e deletar vendas
 void insereVenda(no **inicio, char *cpfCliente, int codigoProduto, int quantidadeComprada)
 {
   no *novoNo = (no *)malloc(sizeof(no));
-  if (novoNo != NULL)
+  if (novoNo == NULL)
+  {
+    printf("Memoria cheia\n");
+  }
+  else
   {
     novoNo->C = NULL;
     novoNo->P = NULL;
 
     novoNo->V = (venda *)malloc(sizeof(venda));
-    if (novoNo->V != NULL)
+    if (novoNo->V == NULL)
+    {
+      printf("Memoria cheia\n");
+      free(novoNo);
+    }
+    else
     {
       strcpy(novoNo->V->cpfCliente, cpfCliente);
       novoNo->V->codigoProduto = codigoProduto;
@@ -187,15 +226,6 @@ void insereVenda(no **inicio, char *cpfCliente, int codigoProduto, int quantidad
 
       insereNaLista(inicio, novoNo);
     }
-    else
-    {
-      printf("Erro ao alocar memoria para a venda.\n");
-      free(novoNo);
-    }
-  }
-  else
-  {
-    printf("Erro ao alocar memoria para o não.\n");
   }
   // TODO - Acrescentar o preço do produto na venda
 }
@@ -240,6 +270,21 @@ cliente *buscaCliente(no *inicio, char *cpf)
   }
   printf("Cliente com CPF %s não encontrado.\n", cpf);
   return NULL;
+}
+
+void clientePossuiVendas(no *inicio, char *cpfCliente, int *result)
+{
+  no *aux = inicio;
+  *result = 0;
+  while (aux != NULL)
+  {
+    if (aux->V != NULL && strcmp(aux->V->cpfCliente, cpfCliente) == 0)
+    {
+      *result = 1;
+      break;
+    }
+    aux = aux->proximo;
+  }
 }
 
 produto *buscaProduto(no *inicio, int codigo)
@@ -338,6 +383,40 @@ void imprimeVendas(no *inicio)
     aux = aux->proximo;
   }
 }
+
+void mostraVendasAcimaEstoque(no *inicio, int quantidadeMinima)
+{
+  no *aux = inicio;
+  while (aux != NULL)
+  {
+    if (aux->V != NULL && aux->V->quantidadeComprada > quantidadeMinima)
+    {
+      printf("CPF do cliente: %s\n", aux->V->cpfCliente);
+      printf("Código do produto: %d\n", aux->V->codigoProduto);
+      printf("Quantidade comprada: %d\n", aux->V->quantidadeComprada);
+      printf("\n");
+    }
+    aux = aux->proximo;
+  }
+}
+
+void mostraProdutosAbaixoEstoque(no *inicio, int quantidadeMaxima)
+{
+  no *aux = inicio;
+  while (aux != NULL)
+  {
+    if (aux->P != NULL && aux->P->quantidadeEstoque < quantidadeMaxima)
+    {
+      printf("Código: %d\n", aux->P->codigo);
+      printf("Descrição: %s\n", aux->P->descricao);
+      printf("Quantidade em estoque: %d\n", aux->P->quantidadeEstoque);
+      printf("Preço unitário: %.2f\n", aux->P->precoUnitario);
+      printf("\n");
+    }
+    aux = aux->proximo;
+  }
+}
+
 // REVIEW - Corrigir as variáveis auxiliares nas funções todas, usar somente a inicio sem criar uma variáveis auxiliar para isso
 
 int main()
@@ -386,6 +465,15 @@ int main()
           scanf("%s", novoCliente->C->nome);
           printf("Digite o CPF do cliente: ");
           scanf("%s", novoCliente->C->cpf);
+          // NOTE - Verifica se o CPF já está cadastrado
+          cliente *clienteExistente = buscaCliente(inicio, novoCliente->C->cpf);
+          if (clienteExistente != NULL)
+          {
+            printf("CPF já cadastrado.\n");
+            free(novoCliente->C);
+            free(novoCliente);
+            break;
+          }
           printf("Digite o endereço do cliente: ");
           printf("Rua: ");
           scanf("%s", novoCliente->C->end.rua);
@@ -398,13 +486,7 @@ int main()
           printf("Estado: ");
           scanf("%s", novoCliente->C->end.estado);
           printf("Digite o telefone do cliente: ");
-          scanf("%s", novoCliente->C->telefone);
-          // NOTE - Verifica se o CPF já está cadastrado
-          if (buscarCliente(inicio, novoCliente->C->cpf) != NULL){
-            printf("CPF já cadastrado.\n");
-            free(novoCliente);
-            break;
-          }
+          scanf("%d", &novoCliente->C->telefone);
           // Insere o novo cliente na lista
           if (inicio == NULL)
           {
@@ -425,14 +507,61 @@ int main()
 
         case 2: // ANCHOR - Não deve aceitar códigos já cadastrados
           printf("\n=========INSERIR PRODUTO==========\n");
-          // Lógica para inserir produto
-
+          // Cria um novo produto
+          produto *novoProduto = (produto *)malloc(sizeof(produto));
+          printf("Digite o código do produto: ");
+          scanf("%d", &novoProduto->codigo);
+          // Verifica se o código já está cadastrado
+          if (buscaProduto(inicio, novoProduto->codigo) != NULL)
+          {
+            printf("Código já cadastrado.\n");
+            free(novoProduto);
+            break;
+          }
+          printf("Digite a descrição do produto: ");
+          scanf("%s", novoProduto->descricao);
+          printf("Digite a quantidade em estoque: ");
+          scanf("%d", &novoProduto->quantidadeEstoque);
+          printf("Digite o preço unitário: ");
+          scanf("%f", &novoProduto->precoUnitario);
+          novoProduto->anterior = NULL;
+          novoProduto->proximo = NULL;
+          insereProduto(&inicio, novoProduto);
+          printf("Produto cadastrado com sucesso!\n");
           break;
 
         case 3: // NOTE - Não deve aceitar CPFs e códigos de produtos que não existam
           printf("\n=========INSERIR VENDA==========\n");
-          // Lógica para inserir venda
-
+          venda *novaVenda = (venda *)malloc(sizeof(venda));
+          printf("Digite o CPF do cliente: ");
+          scanf("%s", novaVenda->cpfCliente);
+          if (buscaCliente(inicio, novaVenda->cpfCliente) == NULL)
+          {
+            printf("CPF não cadastrado.\n");
+            free(novaVenda);
+            break;
+          }
+          printf("Digite o código do produto: ");
+          scanf("%d", &novaVenda->codigoProduto);
+          if (buscaProduto(inicio, novaVenda->codigoProduto) == NULL)
+          {
+            printf("Código de produto não cadastrado.\n");
+            free(novaVenda);
+            break;
+          }
+          printf("Digite a quantidade comprada: ");
+          scanf("%d", &novaVenda->quantidadeComprada);
+          if ((buscaProduto(inicio, novaVenda->codigoProduto))->quantidadeEstoque < novaVenda->quantidadeComprada)
+          {
+            printf("Quantidade em estoque insuficiente.\n");
+            free(novaVenda);
+            break;
+          }
+          novaVenda->anterior = NULL;
+          novaVenda->proximo = NULL;
+          insereVenda(&inicio, novaVenda->cpfCliente, novaVenda->codigoProduto, novaVenda->quantidadeComprada);
+          (buscaProduto(inicio, novaVenda->codigoProduto))->quantidadeEstoque -= novaVenda->quantidadeComprada;
+          printf("Venda cadastrada com sucesso!\n");
           break;
 
         case 0:
@@ -463,7 +592,28 @@ int main()
         case 1:
           do
           {
-            // Lógica para alterar cliente
+            cliente C;
+            char nome[dados];
+            int telefone;
+            endereco end;
+            Data dataNascimento;
+
+            printf("\nDigite o CPF do cliente: ");
+            scanf("%s", C.cpf);
+
+            printf("Digite o novo nome do cliente: ");
+            scanf("%s", nome);
+
+            printf("Digite o novo telefone do cliente: ");
+            scanf("%d", &telefone);
+
+            printf("Digite o novo endereço do cliente (rua, bairro, cidade, estado, número): ");
+            scanf("%s %s %s %s %d", end.rua, end.bairro, end.cidade, end.estado, &end.numero);
+
+            printf("Digite a nova data de nascimento do cliente (dd, mm, aaaa): ");
+            scanf("%d %d %d", &dataNascimento.dd, &dataNascimento.mm, &dataNascimento.aaaa);
+
+            alteraCliente(&C, nome, telefone, end, dataNascimento);
 
             printf("\nDeseja alterar outro cliente? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoCliente);
@@ -473,7 +623,24 @@ int main()
         case 2:
           do
           {
-            // Lógica para alterar produto
+            produto P;
+            int codigo, quantidadeEstoque;
+            char descricao[dados];
+            float precoUnitario;
+
+            printf("\nDigite o código do produto: ");
+            scanf("%d", &codigo);
+
+            printf("Digite a nova quantidade em estoque do produto: ");
+            scanf("%d", &quantidadeEstoque);
+
+            printf("Digite a nova descrição do produto: ");
+            scanf("%s", descricao);
+
+            printf("Digite o novo preço unitário do produto: ");
+            scanf("%f", &precoUnitario);
+
+            alteraProduto(&P, codigo, quantidadeEstoque, descricao, precoUnitario);
 
             printf("\nDeseja alterar outro produto? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoProduto);
@@ -483,7 +650,20 @@ int main()
         case 3:
           do
           {
-            // Lógica para alterar venda
+            venda V;
+            char cpfCliente[11];
+            int codigoProduto, quantidadeComprada;
+
+            printf("\nDigite o CPF do cliente: ");
+            scanf("%s", cpfCliente);
+
+            printf("Digite o código do produto: ");
+            scanf("%d", &codigoProduto);
+
+            printf("Digite a nova quantidade comprada: ");
+            scanf("%d", &quantidadeComprada);
+
+            alteraVenda(&V, cpfCliente, codigoProduto, quantidadeComprada);
 
             printf("\nDeseja alterar outra venda? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoVenda);
@@ -518,7 +698,20 @@ int main()
         case 1:
           do
           {
-            // Lógica para buscar cliente
+            printf("\nDigite o CPF do cliente que deseja buscar: ");
+            char cpfBusca[11];
+            scanf("%s", cpfBusca);
+            if ((buscaCliente(inicio, cpfBusca)) != NULL)
+            {
+              printf("\nCliente encontrado:\n");
+              printf("CPF: %s\n", (buscaCliente(inicio, cpfBusca))->cpf);
+              printf("Nome: %s\n", (buscaCliente(inicio, cpfBusca))->nome);
+              // TODO - Colocar as outras informações do cliente
+            }
+            else
+            {
+              (buscaCliente(inicio, cpfBusca));
+            }
 
             printf("\nDeseja buscar outro cliente? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoCliente);
@@ -528,7 +721,21 @@ int main()
         case 2:
           do
           {
-            // Lógica para buscar produto
+            printf("\nDigite o código do produto que deseja buscar: ");
+            int codigoBusca;
+            scanf("%d", &codigoBusca);
+            if ((buscaProduto(inicio, codigoBusca)) != NULL)
+            {
+              printf("\nProduto encontrado:\n");
+              printf("Código: %d\n", (buscaProduto(inicio, codigoBusca))->codigo);
+              printf("Descrição: %s\n", (buscaProduto(inicio, codigoBusca))->descricao);
+              printf("Preço unitário: %.2f\n", (buscaProduto(inicio, codigoBusca))->precoUnitario);
+              printf("Quantidade em estoque: %d\n", (buscaProduto(inicio, codigoBusca))->quantidadeEstoque);
+            }
+            else
+            {
+              (buscaProduto(inicio, codigoBusca));
+            }
 
             printf("\nDeseja buscar outro produto? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoProduto);
@@ -538,18 +745,24 @@ int main()
         case 3:
           do
           {
-            // Lógica para buscar venda
+            printf("\nDigite o CPF do cliente da venda: ");
+            char cpfBusca[11];
+            scanf("%s", cpfBusca);
+            printf("Digite o código do produto da venda: ");
+            int codigoBusca;
+            scanf("%d", &codigoBusca);
+            if ((buscaVenda(inicio, cpfBusca, codigoBusca)) != NULL)
+            {
+              printf("\nVenda encontrada:\n");
+              printf("CPF do cliente: %s\n", (buscaVenda(inicio, cpfBusca, codigoBusca))->cpfCliente);
+              printf("Código do produto: %d\n", (buscaVenda(inicio, cpfBusca, codigoBusca))->codigoProduto);
+              printf("Quantidade comprada: %d\n", (buscaVenda(inicio, cpfBusca, codigoBusca))->quantidadeComprada);
+              // TODO - Possível colocar o valor total da compra e o nome do cliente
+            }
 
             printf("\nDeseja buscar outra venda? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoVenda);
           } while (opcaoVenda != 0);
-          break;
-
-        case 0:
-          break;
-
-        default:
-          printf("Opção inválida.\n");
           break;
         }
       } while (opcaoBuscar != 0);
@@ -573,8 +786,21 @@ int main()
         case 1: // NOTE - Não deve ser possível remover clientes que possuem vendas
           do
           {
-            // Lógica para remover cliente
-
+            printf("\nDigite o CPF do cliente que deseja remover: ");
+            char cpfRemover[11];
+            scanf("%s", cpfRemover);
+            cliente *C = buscaCliente(inicio, cpfRemover);
+            int possuiVendas;
+            clientePossuiVendas(inicio, cpfRemover, &possuiVendas);
+            if (C != NULL && !possuiVendas)
+            {
+              removeCliente(&inicio, C);
+              printf("\nCliente removido com sucesso!\n");
+            }
+            else
+            {
+              printf("\nNão foi possível remover o cliente pois ele possui vendas cadastradas.\n");
+            }
             printf("\nDeseja remover outro cliente? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoCliente);
           } while (opcaoCliente != 0);
@@ -583,7 +809,21 @@ int main()
         case 2: // NOTE - Não deve ser possível remover o produto se ele estiver em uma venda
           do
           {
-            // Lógica para remover produto
+            printf("\nDigite o código do produto que deseja remover: ");
+            int codigoRemover;
+            scanf("%d", &codigoRemover);
+            produto *P = buscaProduto(inicio, codigoRemover);
+            int emVenda;
+            produtoEmVenda(inicio, codigoRemover, &emVenda);
+            if (P != NULL && !emVenda)
+            {
+              removeProduto(&inicio, P);
+              printf("\nProduto removido com sucesso!\n");
+            }
+            else
+            {
+              printf("\nNão foi possível remover o produto pois ele está cadastrado em uma venda.\n");
+            }
 
             printf("\nDeseja remover outro produto? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoProduto);
@@ -593,7 +833,22 @@ int main()
         case 3:
           do
           {
-            // Lógica para remover venda
+            printf("\nDigite o CPF do cliente da venda que deseja remover: ");
+            char cpfVenda[11];
+            scanf("%s", cpfVenda);
+            printf("\nDigite o código do produto da venda que deseja remover: ");
+            int codigoVenda;
+            scanf("%d", &codigoVenda);
+            venda *V = buscaVenda(inicio, cpfVenda, codigoVenda);
+            if (V != NULL)
+            {
+              removeVenda(&inicio, V);
+              printf("\nVenda removida com sucesso!\n");
+            }
+            else
+            {
+              printf("\nVenda não encontrada.\n");
+            }
 
             printf("\nDeseja remover outra venda? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoVenda);
@@ -629,7 +884,7 @@ int main()
         case 1:
           do
           {
-            // Lógica para mostrar clientes
+            imprimeClientes(inicio);
 
             printf("\nDeseja mostrar outros clientes? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoMostrar);
@@ -639,7 +894,7 @@ int main()
         case 2:
           do
           {
-            // Lógica para mostrar produtos
+            imprimeProdutos(inicio);
 
             printf("\nDeseja mostrar outros produtos? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoMostrar);
@@ -649,7 +904,7 @@ int main()
         case 3:
           do
           {
-            // Lógica para mostrar vendas
+            imprimeVendas(inicio);
 
             printf("\nDeseja mostrar outras vendas? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoMostrar);
@@ -659,9 +914,13 @@ int main()
         case 4:
           do
           {
-            // Lógica para mostrar compras acima de um X valor dos clientes
+            printf("Informe a quantidade mínima de estoque: ");
+            int quantidadeMinima;
+            scanf("%d", &quantidadeMinima);
 
-            printf("\nDeseja mostrar outras compras acima de um X valor dos clientes? (1 - Sim / 0 - Não): ");
+            mostraVendasAcimaEstoque(inicio, quantidadeMinima);
+
+            printf("\n Deseja ver compras acima de outra quantidade de estoque? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoMostrar);
           } while (opcaoMostrar != 0);
           break;
@@ -669,7 +928,10 @@ int main()
         case 5:
           do
           {
-            // Lógica para mostrar produtos com estoque abaixo de X quantidade
+            printf("Informe a quantidade máxima de estoque: ");
+            int quantidadeMaxima;
+            scanf("%d", &quantidadeMaxima);
+            mostraProdutosAbaixoEstoque(inicio, quantidadeMaxima);
 
             printf("\nDeseja mostrar outros produtos com estoque abaixo de X quantidade? (1 - Sim / 0 - Não): ");
             scanf("%d", &opcaoMostrar);
